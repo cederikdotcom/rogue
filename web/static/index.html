@@ -83,21 +83,28 @@
     align-self: end;
   }
   body.touch #actions {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     grid-area: actions;
-    grid-template-columns: repeat(3, var(--act, 3.4rem));
-    grid-auto-rows: 2.6rem;
     gap: 0.3rem;
     justify-self: end;
     align-self: end;
-    max-height: 100%;
-    overflow-y: auto;
+    --act: 3.4rem;
+    --actrow: 2.6rem;
   }
+  body.touch .actpage {
+    display: grid;
+    grid-template-columns: repeat(3, var(--act));
+    grid-auto-rows: var(--actrow);
+    gap: 0.3rem;
+  }
+  body.touch .actpage[hidden] { display: none; }
   @media (orientation: landscape) {
     body.touch #dpad { align-self: center; --pad: 2.9rem; }
-    body.touch #actions { --act: 3rem; grid-auto-rows: 2.4rem; }
+    body.touch #actions { --act: 3rem; --actrow: 2.3rem; }
   }
-  #actions .wide { grid-column: span 3; }
+  #actions .wide { width: 100%; }
+  #pageToggle { color: #9c9; font-size: 0.8rem; }
   button {
     font-family: monospace;
     font-size: 1.15rem;
@@ -172,33 +179,38 @@
   </div>
   <div id="actions">
     <button data-key=" " class="wide"><b>space</b><small>more / dismiss</small></button>
-    <button data-key=","><b>,</b><small>pick up</small></button>
-    <button data-key="i"><b>i</b><small>items</small></button>
-    <button data-key="@"><b>@</b><small>stats</small></button>
-    <button data-key="e"><b>e</b><small>eat</small></button>
-    <button data-key="q"><b>q</b><small>quaff</small></button>
-    <button data-key="r"><b>r</b><small>read</small></button>
-    <button data-key="w"><b>w</b><small>wield</small></button>
-    <button data-key="W"><b>W</b><small>wear</small></button>
-    <button data-key="T"><b>T</b><small>unwear</small></button>
-    <button data-key="P"><b>P</b><small>ring on</small></button>
-    <button data-key="R"><b>R</b><small>ring off</small></button>
-    <button data-key="d"><b>d</b><small>drop</small></button>
-    <button data-key="z"><b>z</b><small>zap</small></button>
-    <button data-key="t"><b>t</b><small>throw</small></button>
-    <button data-key="s"><b>s</b><small>search</small></button>
-    <button data-key="f"><b>f</b><small>fight</small></button>
-    <button data-key="&gt;"><b>&gt;</b><small>go down</small></button>
-    <button data-key="&lt;"><b>&lt;</b><small>go up</small></button>
-    <button data-key="c"><b>c</b><small>name it</small></button>
-    <button data-key="o"><b>o</b><small>options</small></button>
-    <button data-key="*"><b>*</b><small>commands</small></button>
-    <button data-key="S"><b>S</b><small>save</small></button>
-    <button data-key="Q"><b>Q</b><small>quit</small></button>
-    <button data-key="?"><b>?</b><small>help</small></button>
-    <button data-key="y"><b>y</b><small>yes</small></button>
-    <button data-key="n"><b>n</b><small>no</small></button>
-    <button data-key="&#27;"><b>esc</b><small>cancel</small></button>
+    <div class="actpage" data-page="1">
+      <button data-key=","><b>,</b><small>pick up</small></button>
+      <button data-key="i"><b>i</b><small>items</small></button>
+      <button data-key="@"><b>@</b><small>stats</small></button>
+      <button data-key="e"><b>e</b><small>eat</small></button>
+      <button data-key="q"><b>q</b><small>quaff</small></button>
+      <button data-key="r"><b>r</b><small>read</small></button>
+      <button data-key="w"><b>w</b><small>wield</small></button>
+      <button data-key="W"><b>W</b><small>wear</small></button>
+      <button data-key="s"><b>s</b><small>search</small></button>
+      <button data-key="&gt;"><b>&gt;</b><small>go down</small></button>
+      <button data-key="&lt;"><b>&lt;</b><small>go up</small></button>
+      <button data-key="z"><b>z</b><small>zap</small></button>
+      <button data-key="t"><b>t</b><small>throw</small></button>
+      <button data-key="f"><b>f</b><small>fight</small></button>
+      <button data-key="&#27;"><b>esc</b><small>cancel</small></button>
+    </div>
+    <div class="actpage" data-page="2" hidden>
+      <button data-key="T"><b>T</b><small>unwear</small></button>
+      <button data-key="P"><b>P</b><small>ring on</small></button>
+      <button data-key="R"><b>R</b><small>ring off</small></button>
+      <button data-key="d"><b>d</b><small>drop</small></button>
+      <button data-key="c"><b>c</b><small>name it</small></button>
+      <button data-key="o"><b>o</b><small>options</small></button>
+      <button data-key="*"><b>*</b><small>commands</small></button>
+      <button data-key="S"><b>S</b><small>save</small></button>
+      <button data-key="Q"><b>Q</b><small>quit</small></button>
+      <button data-key="?"><b>?</b><small>help</small></button>
+      <button data-key="y"><b>y</b><small>yes</small></button>
+      <button data-key="n"><b>n</b><small>no</small></button>
+    </div>
+    <button id="pageToggle" class="wide">page 1 / 2 &#8594; more</button>
     <button id="kbd" class="wide"><b>keyboard</b><small>type letters &amp; names</small></button>
   </div>
 </div>
@@ -350,6 +362,19 @@
     btn.addEventListener('mouseup', stop);
     btn.addEventListener('mouseleave', stop);
   });
+
+  // paginate the action buttons so nothing needs scrolling
+  const pages = [...document.querySelectorAll('.actpage')];
+  const pageToggle = document.getElementById('pageToggle');
+  let page = 0;
+  function showPage(i) {
+    page = (i + pages.length) % pages.length;
+    pages.forEach((p, idx) => { p.hidden = idx !== page; });
+    const next = (page + 1) % pages.length + 1;
+    pageToggle.innerHTML = 'page ' + (page + 1) + ' / ' + pages.length + ' &#8594; page ' + next;
+  }
+  pageToggle.addEventListener('click', () => showPage(page + 1));
+  showPage((parseInt(new URLSearchParams(location.search).get('page'), 10) || 1) - 1);
 
   // keyboard: a real input bar, because focusing the hidden xterm
   // textarea does not reliably open the keyboard on phones.

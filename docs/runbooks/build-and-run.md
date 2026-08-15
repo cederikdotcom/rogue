@@ -120,7 +120,7 @@ Notes:
   wield, wear, rings, drop, zap, throw, search, fight, stairs,
   name, options, save, quit, help, yes/no, cancel). In landscape
   the D-pad sits left of the terminal and the action pad, which
-  scrolls if it is tall, sits right of it. The "keyboard" button
+  is paged (a "page 1 / 2" toggle flips between a common page and a manage/system page) so nothing needs scrolling, sits right of it. The "keyboard" button
   opens a text input bar for the things buttons cannot do: choosing
   an item by its a-z letter, and free text such as the name. Rare
   informational commands (I ) ] = D v ^R ^P m ^) are keyboard only.
