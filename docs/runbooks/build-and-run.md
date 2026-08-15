@@ -103,6 +103,35 @@ Notes:
   play. Do not expose it on a machine that holds anything sensitive.
 - The terminal is fixed at 80x24, which is what Rogue expects.
 
+### HTTPS with Caddy
+
+For a public domain with TLS, run rogue-web on localhost and put
+Caddy in front. Caddy gets and renews the Let's Encrypt certificate,
+redirects HTTP to HTTPS, and proxies WebSockets without extra
+configuration.
+
+1. Point an A record at the server. With Hetzner DNS:
+
+   ```sh
+   hcloud zone rrset create --name <subdomain> --type A --record <server-ip> <zone>
+   ```
+
+2. Change the rogue-web service to `-addr 127.0.0.1:8080`.
+
+3. Install Caddy (see caddyserver.com/docs/install) and set
+   `/etc/caddy/Caddyfile` to:
+
+   ```
+   <domain> {
+       reverse_proxy 127.0.0.1:8080
+   }
+   ```
+
+4. `systemctl restart rogue-web caddy`
+
+The live deployment is https://rogue.cederik.com on the rogue-test
+Hetzner server (cederik context).
+
 ## Troubleshooting
 
 - **Compile error: `field not found: _cury` or `incomplete definition of type 'WINDOW'`.**
