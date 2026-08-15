@@ -213,15 +213,23 @@
   addEventListener('resize', () => { term.options.fontSize = fontSize(); });
   if (!touch) term.focus();
 
+  // Stable per-browser id, so the server keeps a save file per player.
+  let pid = localStorage.getItem('rogue-player');
+  if (!pid) {
+    pid = (crypto.randomUUID ? crypto.randomUUID().replaceAll('-', '')
+      : Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2));
+    localStorage.setItem('rogue-player', pid);
+  }
+
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const ws = new WebSocket(proto + '://' + location.host + '/ws');
+  const ws = new WebSocket(proto + '://' + location.host + '/ws?p=' + pid);
   ws.binaryType = 'arraybuffer';
 
   ws.onopen = () => {
     status.textContent = touch ? 'connected.' : 'connected. hjkl or arrows to move, i inventory, Q quit.';
   };
   ws.onmessage = (e) => term.write(new Uint8Array(e.data));
-  ws.onclose = () => { status.textContent = 'game over. reload to play again.'; };
+  ws.onclose = () => { status.textContent = 'game over or saved. reload to continue.'; };
   ws.onerror = () => { status.textContent = 'connection error.'; };
 
   function send(d) {

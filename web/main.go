@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/creack/pty"
@@ -27,10 +28,17 @@ func main() {
 	addr := flag.String("addr", ":80", "listen address")
 	rogueBin := flag.String("rogue", "./rogue", "path to the rogue binary")
 	staticDir := flag.String("static", "web/static", "directory with index.html")
+	saveDir := flag.String("saves", "", "directory for per-player save files (default: saves/ next to the binary)")
 	flag.Parse()
 
 	bin, err := filepath.Abs(*rogueBin)
 	if err != nil {
+		log.Fatal(err)
+	}
+	if *saveDir == "" {
+		*saveDir = filepath.Join(filepath.Dir(bin), "saves")
+	}
+	if err := os.MkdirAll(*saveDir, 0o755); err != nil {
 		log.Fatal(err)
 	}
 
@@ -39,14 +47,16 @@ func main() {
 		http.ServeFile(w, r, filepath.Join(*staticDir, "help.html"))
 	})
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		serveGame(w, r, bin)
+		serveGame(w, r, bin, *saveDir)
 	})
 
 	log.Printf("rogue-web: listening on %s, serving %s", *addr, bin)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
-func serveGame(w http.ResponseWriter, r *http.Request, bin string) {
+var playerID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+
+func serveGame(w http.ResponseWriter, r *http.Request, bin, saveDir string) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("upgrade: %v", err)
@@ -54,9 +64,26 @@ func serveGame(w http.ResponseWriter, r *http.Request, bin string) {
 	}
 	defer conn.Close()
 
-	cmd := exec.Command(bin)
+	// Per-player save file, keyed by the id the browser stores in
+	// localStorage. S saves there; on reconnect the game restores
+	// from it (rogue deletes the file when it restores).
+	var args []string
+	env := append(os.Environ(), "TERM=xterm-256color")
+	if id := r.URL.Query().Get("p"); playerID.MatchString(id) {
+		save := filepath.Join(saveDir, id+".save")
+		opts := "file=" + save
+		if name := r.URL.Query().Get("name"); name != "" && len(name) <= 32 {
+			opts += ";name=" + name
+		}
+		env = append(env, "ROGUEOPTS="+opts)
+		if _, err := os.Stat(save); err == nil {
+			args = append(args, save)
+		}
+	}
+
+	cmd := exec.Command(bin, args...)
 	cmd.Dir = filepath.Dir(bin) // score file lives next to the binary
-	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
+	cmd.Env = env
 
 	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: 24, Cols: 80})
 	if err != nil {

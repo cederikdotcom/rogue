@@ -111,6 +111,12 @@ Notes:
   layout on a desktop browser for testing.
 - `/help` serves the original guide "A Guide to the Dungeons of
   Doom" (generated from rogue.html.in into web/static/help.html).
+- Saving works per browser. The page stores a random player id in
+  localStorage and passes it to /ws. The server keeps one save file
+  per id (default directory: saves/ next to the binary, override
+  with -saves). S saves and exits; the next connection with the
+  same id restores and deletes the save file. Clearing browser
+  storage orphans the save.
 
 ### HTTPS with Caddy
 
