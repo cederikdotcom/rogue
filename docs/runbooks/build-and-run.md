@@ -106,8 +106,8 @@ Notes:
 - On touch devices the page shows a D-pad with the real rogue keys
   (hjkl and yubn diagonals, hold to repeat) and action buttons. In
   landscape the D-pad sits left of the terminal and the actions sit
-  right of it. The "keyboard" button opens the phone keyboard for
-  free-text prompts. Add `?touch` to the URL to force the touch
+  right of it. The "keyboard" button opens a text input bar for
+  free-text prompts, such as the name question. Add `?touch` to the URL to force the touch
   layout on a desktop browser for testing.
 - `/help` serves the original guide "A Guide to the Dungeons of
   Doom" (generated from rogue.html.in into web/static/help.html).
