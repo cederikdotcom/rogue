@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rogue</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+<style>
+  body {
+    margin: 0;
+    background: #0d0d0d;
+    color: #ccc;
+    font-family: monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+  h1 { font-size: 1.1rem; font-weight: normal; letter-spacing: 0.3em; margin: 1rem 0 0.5rem; }
+  #status { font-size: 0.8rem; margin-bottom: 0.75rem; color: #888; }
+  #term { padding: 8px; background: #000; border-radius: 6px; }
+</style>
+</head>
+<body>
+<h1>ROGUE</h1>
+<div id="status">connecting...</div>
+<div id="term"></div>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+<script>
+  const status = document.getElementById('status');
+  const term = new Terminal({
+    cols: 80,
+    rows: 24,
+    cursorBlink: true,
+    fontSize: 16,
+    theme: { background: '#000000' }
+  });
+  term.open(document.getElementById('term'));
+  term.focus();
+
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(proto + '://' + location.host + '/ws');
+  ws.binaryType = 'arraybuffer';
+
+  ws.onopen = () => { status.textContent = 'connected. arrow keys or hjkl to move, i for inventory, Q to quit.'; };
+  ws.onmessage = (e) => term.write(new Uint8Array(e.data));
+  ws.onclose = () => { status.textContent = 'game over. reload the page to play again.'; };
+  ws.onerror = () => { status.textContent = 'connection error.'; };
+
+  term.onData((d) => {
+    if (ws.readyState === WebSocket.OPEN) ws.send(d);
+  });
+</script>
+</body>
+</html>

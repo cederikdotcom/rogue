@@ -62,6 +62,47 @@ tmux send-keys -t rogue-test './rogue' Enter
 tmux capture-pane -t rogue-test -p
 ```
 
+## Play in the browser (rogue-web)
+
+The `web/` directory contains a Go server that runs Rogue in the
+browser. It serves an xterm.js page and bridges each WebSocket
+connection to one rogue process in a pty. Each visitor gets an
+isolated game. The game process stops when the browser tab closes.
+
+Build and run (needs Go 1.22 or later and a compiled `./rogue`):
+
+```sh
+cd web
+go build -o rogue-web .
+./rogue-web -addr :80 -rogue /path/to/rogue -static /path/to/rogue/web/static
+```
+
+Then open `http://<server-ip>/` in a browser.
+
+To install it as a systemd service:
+
+```ini
+[Unit]
+Description=Rogue in the browser
+After=network.target
+
+[Service]
+WorkingDirectory=/root/rogue
+ExecStart=/usr/local/bin/rogue-web -addr :80 -rogue /root/rogue/rogue -static /root/rogue/web/static
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Notes:
+
+- The page loads xterm.js from the jsdelivr CDN, so the browser needs
+  internet access.
+- The server has no authentication. Anyone who can reach the port can
+  play. Do not expose it on a machine that holds anything sensitive.
+- The terminal is fixed at 80x24, which is what Rogue expects.
+
 ## Troubleshooting
 
 - **Compile error: `field not found: _cury` or `incomplete definition of type 'WINDOW'`.**
