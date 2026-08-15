@@ -172,8 +172,28 @@ configuration.
 
 4. `systemctl restart rogue-web caddy`
 
-The live deployment is https://rogue.cederik.com on the rogue-test
+The live deployment is https://rogue.cederik.com on the `rogue`
 Hetzner server (cederik context).
+
+### One-shot provisioning
+
+`web/deploy/provision.sh` provisions a fresh host end to end: it
+installs the toolchain and Caddy, creates a non-root `rogue` user,
+clones and builds the game (with `-DNO_SHELL_ESCAPE`) and rogue-web
+into `/opt/rogue`, installs a hardened systemd unit that runs as
+that user, and configures the Caddy vhost. Point the domain's A
+record at the server first (Caddy needs it for the certificate),
+then run the script as root on the new box:
+
+```sh
+scp web/deploy/provision.sh root@<server-ip>:/root/
+ssh root@<server-ip> 'bash /root/provision.sh'
+```
+
+The game never runs as root: rogue-web runs as the `rogue` system
+user and the rogue child processes inherit that. Combined with
+`-DNO_SHELL_ESCAPE`, a visitor who reaches a shell prompt gets
+nothing.
 
 ## Troubleshooting
 
