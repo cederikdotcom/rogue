@@ -1,0 +1,14 @@
+# build artifacts
+rogue
+*.o
+config.h
+config.log
+config.status
+Makefile
+web/rogue-web
+
+# game state
+*.scr
+*.lck
+*.save
+saves/
