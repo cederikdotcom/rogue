@@ -111,15 +111,16 @@ Notes:
   layout on a desktop browser for testing.
 - `/help` serves the original guide "A Guide to the Dungeons of
   Doom" (generated from rogue.html.in into web/static/help.html).
-- Saving works per browser. The page stores a random player id in
-  localStorage and passes it to /ws. The server keeps one save file
+- Saving works per player id. The id is readable and memorable
+  (wren-the-sly-4721), shown in the header, and stored in
+  localStorage. Tap the id to see it (write it down) or to type a
+  different id and continue that save on any device. The server keeps one save file
   per id (default directory: saves/ next to the binary, override
   with -saves). S saves and exits; the next connection with the
   same id restores and deletes the save file. Clearing browser
   storage orphans the save.
-- Every player gets a random name (stored next to the id in
-  localStorage, shown in the header). The server passes it to the
-  game through ROGUEOPTS name=, so the greeting, tombstone and
+- The name part of the id (Wren the Sly) is the player name. The
+  server passes it to the game through ROGUEOPTS name=, so the greeting, tombstone and
   scoreboard use it. The name pattern forbids commas, which is what
   keeps ROGUEOPTS injection out.
 

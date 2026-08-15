@@ -29,7 +29,12 @@
   }
   h1 { font-size: 0.9rem; font-weight: normal; letter-spacing: 0.3em; margin: 0; }
   #status { font-size: 0.7rem; color: #888; }
-  #who { font-size: 0.75rem; color: #9c9; }
+  #who {
+    font-size: 0.75rem;
+    color: #9c9;
+    cursor: pointer;
+    text-decoration: underline dotted #575;
+  }
   header a { font-size: 0.7rem; color: #9c9; }
 
   #main {
@@ -215,29 +220,47 @@
   addEventListener('resize', () => { term.options.fontSize = fontSize(); });
   if (!touch) term.focus();
 
-  // Stable per-browser id, so the server keeps a save file per player.
-  let pid = localStorage.getItem('rogue-player');
+  // The player id doubles as the identity you can write down and
+  // type on another device to pick up your save: wren-the-sly-4721.
+  // The name part also becomes the in-game name.
+  let pid = localStorage.getItem('rogue-id');
   if (!pid) {
-    pid = (crypto.randomUUID ? crypto.randomUUID().replaceAll('-', '')
-      : Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2));
-    localStorage.setItem('rogue-player', pid);
+    const first = ['alda', 'bran', 'cora', 'dorn', 'edda', 'finn', 'greta', 'hild',
+      'ivo', 'jora', 'kell', 'lira', 'mord', 'nix', 'orla', 'pike', 'quill', 'rook',
+      'sable', 'tobin', 'una', 'vex', 'wren', 'yara', 'zed'];
+    const epithet = ['bold', 'sly', 'grim', 'swift', 'lucky', 'wary', 'fey', 'dour',
+      'keen', 'rash', 'stout', 'quiet', 'cursed', 'bright', 'meek', 'vile'];
+    // keep the name a previous version rolled, if there is one
+    const legacy = localStorage.getItem('rogue-name');
+    const base = legacy && /^[A-Za-z ]{1,24}$/.test(legacy)
+      ? legacy.toLowerCase().replaceAll(' ', '-')
+      : first[Math.floor(Math.random() * first.length)] + '-the-'
+        + epithet[Math.floor(Math.random() * epithet.length)];
+    pid = base + '-' + (1000 + Math.floor(Math.random() * 9000));
+    localStorage.setItem('rogue-id', pid);
   }
 
-  // Every player gets a random name, kept alongside the id. The game
-  // uses it for the greeting, the tombstone and the scoreboard.
-  let name = localStorage.getItem('rogue-name');
-  if (!name) {
-    const first = ['Alda', 'Bran', 'Cora', 'Dorn', 'Edda', 'Finn', 'Greta', 'Hild',
-      'Ivo', 'Jora', 'Kell', 'Lira', 'Mord', 'Nix', 'Orla', 'Pike', 'Quill', 'Rook',
-      'Sable', 'Tobin', 'Una', 'Vex', 'Wren', 'Yara', 'Zed'];
-    const epithet = ['the Bold', 'the Sly', 'the Grim', 'the Swift', 'the Lucky',
-      'the Wary', 'the Fey', 'the Dour', 'the Keen', 'the Rash', 'the Stout',
-      'the Quiet', 'the Cursed', 'the Bright', 'the Meek', 'the Vile'];
-    name = first[Math.floor(Math.random() * first.length)] + ' '
-      + epithet[Math.floor(Math.random() * epithet.length)];
-    localStorage.setItem('rogue-name', name);
+  function idToName(id) {
+    const parts = id.split('-');
+    if (/^\d+$/.test(parts[parts.length - 1])) parts.pop();
+    return parts.map((w) => w === 'the' ? 'the' : w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ').slice(0, 32);
   }
-  document.getElementById('who').textContent = name;
+  const name = idToName(pid);
+
+  const who = document.getElementById('who');
+  who.textContent = pid;
+  who.addEventListener('click', () => {
+    const answer = prompt(
+      'Your id is:\n\n    ' + pid + '\n\n'
+      + 'Write it down. Type it on any device to continue your saved game there.\n'
+      + 'To switch to another id, type it below:', pid);
+    if (answer === null) return;
+    const norm = answer.trim().toLowerCase().replace(/#/g, '').replace(/\s+/g, '-');
+    if (norm === pid || !/^[a-z0-9-]{1,64}$/.test(norm)) return;
+    localStorage.setItem('rogue-id', norm);
+    location.reload();
+  });
 
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(proto + '://' + location.host + '/ws?p=' + pid
