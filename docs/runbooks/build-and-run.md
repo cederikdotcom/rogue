@@ -69,7 +69,18 @@ browser. It serves an xterm.js page and bridges each WebSocket
 connection to one rogue process in a pty. Each visitor gets an
 isolated game. The game process stops when the browser tab closes.
 
-Build and run (needs Go 1.22 or later and a compiled `./rogue`):
+IMPORTANT: build the rogue binary for the web with
+`-DNO_SHELL_ESCAPE`. Rogue's `!` command forks an interactive shell,
+which on a public server running as any user is a remote shell for
+every visitor. With the flag, `!` just prints "shell escape is
+disabled". Build it with:
+
+```sh
+make CFLAGS="-g -O2 -DNO_SHELL_ESCAPE"
+```
+
+Build and run rogue-web (needs Go 1.22 or later and the compiled
+`./rogue` from above):
 
 ```sh
 cd web
@@ -104,11 +115,17 @@ Notes:
 - The terminal is fixed at 80x24, which is what Rogue expects. The
   page scales the font so all 80 columns fit the screen width.
 - On touch devices the page shows a D-pad with the real rogue keys
-  (hjkl and yubn diagonals, hold to repeat) and action buttons. In
-  landscape the D-pad sits left of the terminal and the actions sit
-  right of it. The "keyboard" button opens a text input bar for
-  free-text prompts, such as the name question. Add `?touch` to the URL to force the touch
-  layout on a desktop browser for testing.
+  (hjkl and yubn diagonals, hold to repeat) and a labelled action
+  pad covering the playable commands (pick up, eat, quaff, read,
+  wield, wear, rings, drop, zap, throw, search, fight, stairs,
+  name, options, save, quit, help, yes/no, cancel). In landscape
+  the D-pad sits left of the terminal and the action pad, which
+  scrolls if it is tall, sits right of it. The "keyboard" button
+  opens a text input bar for the things buttons cannot do: choosing
+  an item by its a-z letter, and free text such as the name. Rare
+  informational commands (I ) ] = D v ^R ^P m ^) are keyboard only.
+  Add `?touch` to the URL to force the touch layout on a desktop
+  browser for testing.
 - `/help` serves the original guide "A Guide to the Dungeons of
   Doom" (generated from rogue.html.in into web/static/help.html).
 - `/scores` shows the shared top ten. It runs `rogue -s` on each

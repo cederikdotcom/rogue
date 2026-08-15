@@ -177,7 +177,11 @@ over:
                         endmsg();
 		    }
 		}
+#ifdef NO_SHELL_ESCAPE
+		when '!': msg("shell escape is disabled");
+#else
 		when '!': shell();
+#endif
 		when 'h': do_move(0, -1);
 		when 'j': do_move(1, 0);
 		when 'k': do_move(-1, 0);
