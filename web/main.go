@@ -96,6 +96,11 @@ func serveGame(w http.ResponseWriter, r *http.Request, bin, saveDir string) {
 		return
 	}
 	log.Printf("game started for %s (pid %d)", r.RemoteAddr, cmd.Process.Pid)
+	if len(args) > 0 {
+		// text frames are control messages for the page; pty bytes
+		// always travel as binary frames
+		conn.WriteMessage(websocket.TextMessage, []byte(`{"restored":true}`))
+	}
 	defer func() {
 		// close the pty first so the reader goroutine unblocks
 		ptmx.Close()

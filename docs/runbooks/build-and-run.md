@@ -117,7 +117,9 @@ Notes:
   different id and continue that save on any device. The server keeps one save file
   per id (default directory: saves/ next to the binary, override
   with -saves). S saves and exits; the next connection with the
-  same id restores and deletes the save file. Clearing browser
+  same id restores and deletes the save file. When that happens the
+  status line says "save restored and used up", because the single
+  use rule surprises people. Clearing browser
   storage orphans the save.
 - The name part of the id (Wren the Sly) is the player name. The
   server passes it to the game through ROGUEOPTS name=, so the greeting, tombstone and

@@ -270,7 +270,19 @@
   ws.onopen = () => {
     status.textContent = touch ? 'connected.' : 'connected. hjkl or arrows to move, i inventory, Q quit.';
   };
-  ws.onmessage = (e) => term.write(new Uint8Array(e.data));
+  ws.onmessage = (e) => {
+    if (typeof e.data === 'string') {
+      // control message from the server, not terminal bytes
+      try {
+        if (JSON.parse(e.data).restored) {
+          status.textContent = 'save restored and used up. press S to save again.';
+          status.style.color = '#cc9';
+        }
+      } catch (_) {}
+      return;
+    }
+    term.write(new Uint8Array(e.data));
+  };
   ws.onclose = () => {
     status.textContent = 'game over or saved. tap here to continue.';
     status.style.cssText = 'color:#9c9;cursor:pointer;text-decoration:underline';
