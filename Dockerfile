@@ -30,8 +30,9 @@ RUN cd web && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /rogue-web .
 
 # --- runtime stage ---
 FROM debian:bookworm-slim
+# rogue links against -lcurses (libncurses.so.6, the narrow lib) plus libtinfo.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      libncursesw6 libtinfo6 ca-certificates \
+      libncurses6 libtinfo6 ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
