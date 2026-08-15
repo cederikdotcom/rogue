@@ -43,18 +43,26 @@ func main() {
 	rogueBin := flag.String("rogue", "./rogue", "path to the rogue binary")
 	staticDir := flag.String("static", "web/static", "directory with index.html")
 	saveDir := flag.String("saves", "", "directory for per-player save files (default: saves/ next to the binary)")
+	workDir := flag.String("workdir", "", "working directory for rogue processes, where the score and lock files live (default: next to the binary)")
 	flag.Parse()
 
 	bin, err := filepath.Abs(*rogueBin)
 	if err != nil {
 		log.Fatal(err)
 	}
+	if *workDir == "" {
+		*workDir = filepath.Dir(bin)
+	}
+	if err := os.MkdirAll(*workDir, 0o755); err != nil {
+		log.Fatal(err)
+	}
 	if *saveDir == "" {
-		*saveDir = filepath.Join(filepath.Dir(bin), "saves")
+		*saveDir = filepath.Join(*workDir, "saves")
 	}
 	if err := os.MkdirAll(*saveDir, 0o755); err != nil {
 		log.Fatal(err)
 	}
+	gameDir := *workDir
 
 	http.Handle("/", http.FileServer(http.Dir(*staticDir)))
 	http.HandleFunc("/help", func(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +72,7 @@ func main() {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, bin, "-s")
-		cmd.Dir = filepath.Dir(bin)
+		cmd.Dir = gameDir
 		cmd.Env = append(os.Environ(), "TERM=dumb")
 		out, err := cmd.Output()
 		if err != nil {
@@ -74,7 +82,7 @@ func main() {
 		fmt.Fprintf(w, scoresPage, html.EscapeString(string(out)))
 	})
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		serveGame(w, r, bin, *saveDir)
+		serveGame(w, r, bin, *saveDir, gameDir)
 	})
 
 	log.Printf("rogue-web: listening on %s, serving %s", *addr, bin)
@@ -86,7 +94,7 @@ var (
 	playerName = regexp.MustCompile(`^[A-Za-z0-9 _-]{1,32}$`)
 )
 
-func serveGame(w http.ResponseWriter, r *http.Request, bin, saveDir string) {
+func serveGame(w http.ResponseWriter, r *http.Request, bin, saveDir, gameDir string) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("upgrade: %v", err)
@@ -114,7 +122,7 @@ func serveGame(w http.ResponseWriter, r *http.Request, bin, saveDir string) {
 	}
 
 	cmd := exec.Command(bin, args...)
-	cmd.Dir = filepath.Dir(bin) // score file lives next to the binary
+	cmd.Dir = gameDir // score and lock files live here
 	cmd.Env = env
 
 	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: 24, Cols: 80})
