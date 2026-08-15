@@ -29,6 +29,7 @@
   }
   h1 { font-size: 0.9rem; font-weight: normal; letter-spacing: 0.3em; margin: 0; }
   #status { font-size: 0.7rem; color: #888; }
+  #who { font-size: 0.75rem; color: #9c9; }
   header a { font-size: 0.7rem; color: #9c9; }
 
   #main {
@@ -135,6 +136,7 @@
 <body>
 <header>
   <h1>ROGUE</h1>
+  <div id="who"></div>
   <div id="status">connecting...</div>
   <a href="/help">help</a>
 </header>
@@ -221,8 +223,25 @@
     localStorage.setItem('rogue-player', pid);
   }
 
+  // Every player gets a random name, kept alongside the id. The game
+  // uses it for the greeting, the tombstone and the scoreboard.
+  let name = localStorage.getItem('rogue-name');
+  if (!name) {
+    const first = ['Alda', 'Bran', 'Cora', 'Dorn', 'Edda', 'Finn', 'Greta', 'Hild',
+      'Ivo', 'Jora', 'Kell', 'Lira', 'Mord', 'Nix', 'Orla', 'Pike', 'Quill', 'Rook',
+      'Sable', 'Tobin', 'Una', 'Vex', 'Wren', 'Yara', 'Zed'];
+    const epithet = ['the Bold', 'the Sly', 'the Grim', 'the Swift', 'the Lucky',
+      'the Wary', 'the Fey', 'the Dour', 'the Keen', 'the Rash', 'the Stout',
+      'the Quiet', 'the Cursed', 'the Bright', 'the Meek', 'the Vile'];
+    name = first[Math.floor(Math.random() * first.length)] + ' '
+      + epithet[Math.floor(Math.random() * epithet.length)];
+    localStorage.setItem('rogue-name', name);
+  }
+  document.getElementById('who').textContent = name;
+
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const ws = new WebSocket(proto + '://' + location.host + '/ws?p=' + pid);
+  const ws = new WebSocket(proto + '://' + location.host + '/ws?p=' + pid
+    + '&name=' + encodeURIComponent(name));
   ws.binaryType = 'arraybuffer';
 
   ws.onopen = () => {

@@ -117,6 +117,11 @@ Notes:
   with -saves). S saves and exits; the next connection with the
   same id restores and deletes the save file. Clearing browser
   storage orphans the save.
+- Every player gets a random name (stored next to the id in
+  localStorage, shown in the header). The server passes it to the
+  game through ROGUEOPTS name=, so the greeting, tombstone and
+  scoreboard use it. The name pattern forbids commas, which is what
+  keeps ROGUEOPTS injection out.
 
 ### HTTPS with Caddy
 

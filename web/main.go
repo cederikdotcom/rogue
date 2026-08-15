@@ -54,7 +54,10 @@ func main() {
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
-var playerID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+var (
+	playerID   = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+	playerName = regexp.MustCompile(`^[A-Za-z0-9 _-]{1,32}$`)
+)
 
 func serveGame(w http.ResponseWriter, r *http.Request, bin, saveDir string) {
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -72,8 +75,10 @@ func serveGame(w http.ResponseWriter, r *http.Request, bin, saveDir string) {
 	if id := r.URL.Query().Get("p"); playerID.MatchString(id) {
 		save := filepath.Join(saveDir, id+".save")
 		opts := "file=" + save
-		if name := r.URL.Query().Get("name"); name != "" && len(name) <= 32 {
-			opts += ";name=" + name
+		// ROGUEOPTS values are comma separated; the name pattern
+		// forbids commas so it cannot inject other options.
+		if name := r.URL.Query().Get("name"); playerName.MatchString(name) {
+			opts += ",name=" + name
 		}
 		env = append(env, "ROGUEOPTS="+opts)
 		if _, err := os.Stat(save); err == nil {
