@@ -1,5 +1,7 @@
 # Build Issues Found During README Testing
 
+**Status: FIXED.** The critical compilation error (Issue 1) was fixed in commit `3acae44` (2026-08-15). The `tstp()` function in `main.c` now restores the cursor with the public `wmove()` API instead of writing to internal ncurses structure members. The game builds and runs on modern ncurses (verified on Linux with ncurses 6.4).
+
 This document lists issues encountered when following the README.md build instructions on macOS (darwin 25.0.0, Apple Silicon).
 
 ## Date
@@ -14,7 +16,7 @@ Testing performed: Following README.md Quick Start instructions
 
 ## Issues Found
 
-### 1. Compilation Error: Incomplete Type 'WINDOW'
+### 1. Compilation Error: Incomplete Type 'WINDOW' — FIXED in `3acae44`
 
 **Location**: `main.c:241-242`
 
@@ -112,9 +114,9 @@ tstp(int ignored)
 
 ## Next Steps
 
-1. **Code Fix Required**: The `main.c` file needs to be updated to remove direct access to internal ncurses structure members
-2. **Testing**: After fix, verify the game builds and runs correctly
-3. **Documentation**: Update README with any workarounds or fixes applied
+1. ~~**Code Fix Required**: The `main.c` file needs to be updated to remove direct access to internal ncurses structure members~~ DONE in commit `3acae44`: `tstp()` now uses `wmove(curscr, oy, ox)` instead of writing to `curscr->_cury` / `curscr->_curx`
+2. ~~**Testing**: After fix, verify the game builds and runs correctly~~ DONE: built and played on Linux (Ubuntu 24.04, ncurses 6.4); movement, combat, and item pickup all work
+3. **Documentation**: See `docs/runbooks/build-and-run.md` for build, run, and troubleshooting instructions
 
 ## Additional Notes
 
