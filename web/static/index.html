@@ -3,53 +3,197 @@
 <head>
 <meta charset="utf-8">
 <title>Rogue</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
 <style>
-  body {
+  * { box-sizing: border-box; }
+  html, body {
     margin: 0;
+    height: 100%;
     background: #0d0d0d;
     color: #ccc;
     font-family: monospace;
+    overscroll-behavior: none;
+  }
+  body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-height: 100vh;
+    touch-action: manipulation;
   }
-  h1 { font-size: 1.1rem; font-weight: normal; letter-spacing: 0.3em; margin: 1rem 0 0.5rem; }
-  #status { font-size: 0.8rem; margin-bottom: 0.75rem; color: #888; }
-  #term { padding: 8px; background: #000; border-radius: 6px; }
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.4rem 0.75rem 0.2rem;
+    width: 100%;
+    justify-content: center;
+  }
+  h1 { font-size: 0.95rem; font-weight: normal; letter-spacing: 0.3em; margin: 0; }
+  #status { font-size: 0.7rem; color: #888; }
+  #termwrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+    padding: 4px 2px;
+  }
+  #term { background: #000; border-radius: 6px; padding: 4px; }
+
+  /* touch controls */
+  #controls {
+    display: none;
+    width: 100%;
+    max-width: 480px;
+    flex: 1;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom));
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body.touch #controls { display: flex; }
+
+  #dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 3.4rem);
+    grid-template-rows: repeat(3, 3.4rem);
+    gap: 0.3rem;
+  }
+  #actions {
+    display: grid;
+    grid-template-columns: repeat(3, 3.2rem);
+    grid-auto-rows: 2.6rem;
+    gap: 0.3rem;
+  }
+  #actions .wide { grid-column: span 3; }
+  button {
+    font-family: monospace;
+    font-size: 1.1rem;
+    color: #ddd;
+    background: #1c1c1c;
+    border: 1px solid #333;
+    border-radius: 0.5rem;
+    padding: 0;
+    touch-action: manipulation;
+  }
+  button:active { background: #3a3a3a; }
+  #dpad button { font-size: 1.3rem; color: #9c9; }
+  #actions button { color: #cc9; font-size: 0.95rem; }
 </style>
 </head>
 <body>
-<h1>ROGUE</h1>
-<div id="status">connecting...</div>
-<div id="term"></div>
+<header>
+  <h1>ROGUE</h1>
+  <div id="status">connecting...</div>
+</header>
+<div id="termwrap"><div id="term"></div></div>
+
+<div id="controls">
+  <div id="dpad">
+    <button data-key="y">&#8598;</button>
+    <button data-key="k">&#8593;</button>
+    <button data-key="u">&#8599;</button>
+    <button data-key="h">&#8592;</button>
+    <button data-key="." title="rest">&#183;</button>
+    <button data-key="l">&#8594;</button>
+    <button data-key="b">&#8601;</button>
+    <button data-key="j">&#8595;</button>
+    <button data-key="n">&#8600;</button>
+  </div>
+  <div id="actions">
+    <button data-key=" " class="wide">space</button>
+    <button data-key="i">inv</button>
+    <button data-key="s">srch</button>
+    <button data-key="&gt;">&gt;</button>
+    <button data-key="e">eat</button>
+    <button data-key="q">quaf</button>
+    <button data-key="r">read</button>
+    <button data-key="w">wld</button>
+    <button data-key="&#27;">esc</button>
+    <button id="kbd">abc</button>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
 <script>
+  const COLS = 80, ROWS = 24;
+  const touch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window
+    || new URLSearchParams(location.search).has('touch');
+  if (touch) document.body.classList.add('touch');
+
+  // Pick a font size so 80 columns fit the screen width.
+  function fontSize() {
+    const avail = document.body.clientWidth - 16;
+    const probe = document.createElement('span');
+    probe.style.cssText = 'font-family:monospace;font-size:100px;position:absolute;visibility:hidden';
+    probe.textContent = 'M';
+    document.body.appendChild(probe);
+    const ratio = probe.getBoundingClientRect().width / 100; // char width per px of font size
+    probe.remove();
+    const fit = avail / (COLS * ratio);
+    return Math.max(5, Math.min(18, fit));
+  }
+
   const status = document.getElementById('status');
   const term = new Terminal({
-    cols: 80,
-    rows: 24,
+    cols: COLS,
+    rows: ROWS,
     cursorBlink: true,
-    fontSize: 16,
+    fontSize: fontSize(),
     theme: { background: '#000000' }
   });
   term.open(document.getElementById('term'));
-  term.focus();
+  addEventListener('resize', () => { term.options.fontSize = fontSize(); });
+  if (!touch) term.focus();
 
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(proto + '://' + location.host + '/ws');
   ws.binaryType = 'arraybuffer';
 
-  ws.onopen = () => { status.textContent = 'connected. arrow keys or hjkl to move, i for inventory, Q to quit.'; };
+  ws.onopen = () => {
+    status.textContent = touch ? 'connected.' : 'connected. hjkl or arrows to move, i inventory, Q quit.';
+  };
   ws.onmessage = (e) => term.write(new Uint8Array(e.data));
-  ws.onclose = () => { status.textContent = 'game over. reload the page to play again.'; };
+  ws.onclose = () => { status.textContent = 'game over. reload to play again.'; };
   ws.onerror = () => { status.textContent = 'connection error.'; };
 
-  term.onData((d) => {
+  function send(d) {
     if (ws.readyState === WebSocket.OPEN) ws.send(d);
+  }
+  term.onData(send);
+
+  // Touch buttons: tap sends one key, holding a direction repeats it.
+  document.querySelectorAll('#controls button[data-key]').forEach((btn) => {
+    const key = btn.dataset.key;
+    const repeatable = 'hjklyubn'.includes(key);
+    let timer = null, interval = null;
+    const start = (ev) => {
+      ev.preventDefault();
+      send(key);
+      if (repeatable) {
+        timer = setTimeout(() => {
+          interval = setInterval(() => send(key), 130);
+        }, 350);
+      }
+    };
+    const stop = () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+      timer = interval = null;
+    };
+    btn.addEventListener('touchstart', start, { passive: false });
+    btn.addEventListener('touchend', stop);
+    btn.addEventListener('touchcancel', stop);
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('mouseup', stop);
+    btn.addEventListener('mouseleave', stop);
   });
+
+  // abc: focus the terminal so the phone shows its keyboard,
+  // for prompts that need free text or uncommon commands.
+  document.getElementById('kbd').addEventListener('click', () => term.focus());
 </script>
 </body>
 </html>

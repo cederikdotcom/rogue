@@ -101,7 +101,12 @@ Notes:
   internet access.
 - The server has no authentication. Anyone who can reach the port can
   play. Do not expose it on a machine that holds anything sensitive.
-- The terminal is fixed at 80x24, which is what Rogue expects.
+- The terminal is fixed at 80x24, which is what Rogue expects. The
+  page scales the font so all 80 columns fit the screen width.
+- On touch devices the page shows a D-pad (hold a direction to
+  repeat) and action buttons. The "abc" button opens the phone
+  keyboard for free-text prompts. Add `?touch` to the URL to force
+  the touch layout on a desktop browser for testing.
 
 ### HTTPS with Caddy
 
