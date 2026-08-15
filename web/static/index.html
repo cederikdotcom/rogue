@@ -271,7 +271,11 @@
     status.textContent = touch ? 'connected.' : 'connected. hjkl or arrows to move, i inventory, Q quit.';
   };
   ws.onmessage = (e) => term.write(new Uint8Array(e.data));
-  ws.onclose = () => { status.textContent = 'game over or saved. reload to continue.'; };
+  ws.onclose = () => {
+    status.textContent = 'game over or saved. tap here to continue.';
+    status.style.cssText = 'color:#9c9;cursor:pointer;text-decoration:underline';
+    status.addEventListener('click', () => location.reload());
+  };
   ws.onerror = () => { status.textContent = 'connection error.'; };
 
   function send(d) {
