@@ -35,6 +35,9 @@ func main() {
 	}
 
 	http.Handle("/", http.FileServer(http.Dir(*staticDir)))
+	http.HandleFunc("/help", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(*staticDir, "help.html"))
+	})
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		serveGame(w, r, bin)
 	})

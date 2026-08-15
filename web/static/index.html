@@ -18,101 +18,127 @@
   body {
     display: flex;
     flex-direction: column;
-    align-items: center;
     touch-action: manipulation;
   }
   header {
     display: flex;
     align-items: baseline;
     gap: 1rem;
-    padding: 0.4rem 0.75rem 0.2rem;
-    width: 100%;
+    padding: 0.3rem 0.75rem;
     justify-content: center;
   }
-  h1 { font-size: 0.95rem; font-weight: normal; letter-spacing: 0.3em; margin: 0; }
+  h1 { font-size: 0.9rem; font-weight: normal; letter-spacing: 0.3em; margin: 0; }
   #status { font-size: 0.7rem; color: #888; }
+  header a { font-size: 0.7rem; color: #9c9; }
+
+  #main {
+    flex: 1;
+    display: grid;
+    grid-template-areas: "term";
+    min-height: 0;
+  }
+  body.touch #main {
+    grid-template-areas: "term term" "dpad actions";
+    grid-template-rows: 1fr auto;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    padding: 0 0.6rem calc(0.6rem + env(safe-area-inset-bottom));
+  }
+  /* landscape: controls flank the terminal */
+  @media (orientation: landscape) {
+    body.touch #main {
+      grid-template-areas: "dpad term actions";
+      grid-template-rows: 1fr;
+      grid-template-columns: auto 1fr auto;
+      padding: 0 calc(0.4rem + env(safe-area-inset-left)) 0.4rem
+                 calc(0.4rem + env(safe-area-inset-right));
+    }
+  }
+
   #termwrap {
-    width: 100%;
+    grid-area: term;
     display: flex;
     justify-content: center;
+    align-items: center;
     overflow: hidden;
-    padding: 4px 2px;
+    min-width: 0;
+    min-height: 0;
   }
-  #term { background: #000; border-radius: 6px; padding: 4px; }
+  #term { background: #000; border-radius: 6px; padding: 3px; }
 
-  /* touch controls */
-  #controls {
-    display: none;
-    width: 100%;
-    max-width: 480px;
-    flex: 1;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.5rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom));
-    user-select: none;
-    -webkit-user-select: none;
-  }
-  body.touch #controls { display: flex; }
-
-  #dpad {
+  #dpad, #actions { display: none; }
+  body.touch #dpad {
     display: grid;
-    grid-template-columns: repeat(3, 3.4rem);
-    grid-template-rows: repeat(3, 3.4rem);
+    grid-area: dpad;
+    grid-template-columns: repeat(3, var(--pad, 3.2rem));
+    grid-template-rows: repeat(3, var(--pad, 3.2rem));
     gap: 0.3rem;
+    justify-self: start;
+    align-self: end;
   }
-  #actions {
+  body.touch #actions {
     display: grid;
-    grid-template-columns: repeat(3, 3.2rem);
-    grid-auto-rows: 2.6rem;
+    grid-area: actions;
+    grid-template-columns: repeat(3, var(--act, 3rem));
+    grid-auto-rows: 2.5rem;
     gap: 0.3rem;
+    justify-self: end;
+    align-self: end;
+  }
+  @media (orientation: landscape) {
+    body.touch #dpad, body.touch #actions { align-self: center; }
+    body.touch #dpad { --pad: 2.9rem; }
+    body.touch #actions { --act: 2.7rem; grid-auto-rows: 2.2rem; }
   }
   #actions .wide { grid-column: span 3; }
   button {
     font-family: monospace;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     color: #ddd;
     background: #1c1c1c;
     border: 1px solid #333;
     border-radius: 0.5rem;
     padding: 0;
     touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
   }
   button:active { background: #3a3a3a; }
-  #dpad button { font-size: 1.3rem; color: #9c9; }
-  #actions button { color: #cc9; font-size: 0.95rem; }
+  #dpad button { color: #9c9; }
+  #actions button { color: #cc9; font-size: 0.9rem; }
 </style>
 </head>
 <body>
 <header>
   <h1>ROGUE</h1>
   <div id="status">connecting...</div>
+  <a href="/help">help</a>
 </header>
-<div id="termwrap"><div id="term"></div></div>
-
-<div id="controls">
+<div id="main">
+  <div id="termwrap"><div id="term"></div></div>
   <div id="dpad">
-    <button data-key="y">&#8598;</button>
-    <button data-key="k">&#8593;</button>
-    <button data-key="u">&#8599;</button>
-    <button data-key="h">&#8592;</button>
-    <button data-key="." title="rest">&#183;</button>
-    <button data-key="l">&#8594;</button>
-    <button data-key="b">&#8601;</button>
-    <button data-key="j">&#8595;</button>
-    <button data-key="n">&#8600;</button>
+    <button data-key="y">y</button>
+    <button data-key="k">k</button>
+    <button data-key="u">u</button>
+    <button data-key="h">h</button>
+    <button data-key="." title="rest">.</button>
+    <button data-key="l">l</button>
+    <button data-key="b">b</button>
+    <button data-key="j">j</button>
+    <button data-key="n">n</button>
   </div>
   <div id="actions">
     <button data-key=" " class="wide">space</button>
-    <button data-key="i">inv</button>
-    <button data-key="s">srch</button>
+    <button data-key="i">i</button>
+    <button data-key="s">s</button>
     <button data-key="&gt;">&gt;</button>
-    <button data-key="e">eat</button>
-    <button data-key="q">quaf</button>
-    <button data-key="r">read</button>
-    <button data-key="w">wld</button>
+    <button data-key="e">e</button>
+    <button data-key="q">q</button>
+    <button data-key="r">r</button>
+    <button data-key="w">w</button>
+    <button data-key="?">?</button>
     <button data-key="&#27;">esc</button>
-    <button id="kbd">abc</button>
+    <button id="kbd" class="wide">keyboard</button>
   </div>
 </div>
 
@@ -123,17 +149,24 @@
     || new URLSearchParams(location.search).has('touch');
   if (touch) document.body.classList.add('touch');
 
-  // Pick a font size so 80 columns fit the screen width.
-  function fontSize() {
-    const avail = document.body.clientWidth - 16;
+  // character width/height ratios of the monospace font, per px of font size
+  function charRatios() {
     const probe = document.createElement('span');
     probe.style.cssText = 'font-family:monospace;font-size:100px;position:absolute;visibility:hidden';
     probe.textContent = 'M';
     document.body.appendChild(probe);
-    const ratio = probe.getBoundingClientRect().width / 100; // char width per px of font size
+    const r = probe.getBoundingClientRect();
     probe.remove();
-    const fit = avail / (COLS * ratio);
-    return Math.max(5, Math.min(18, fit));
+    return { w: r.width / 100, h: r.height / 100 };
+  }
+  const ratio = charRatios();
+
+  // Pick a font size so the 80x24 grid fits the terminal area.
+  function fontSize() {
+    const box = document.getElementById('termwrap').getBoundingClientRect();
+    const fitW = (box.width - 12) / (COLS * ratio.w);
+    const fitH = (box.height - 12) / (ROWS * ratio.h);
+    return Math.max(5, Math.min(18, fitW, fitH));
   }
 
   const status = document.getElementById('status');
@@ -165,7 +198,7 @@
   term.onData(send);
 
   // Touch buttons: tap sends one key, holding a direction repeats it.
-  document.querySelectorAll('#controls button[data-key]').forEach((btn) => {
+  document.querySelectorAll('#main button[data-key]').forEach((btn) => {
     const key = btn.dataset.key;
     const repeatable = 'hjklyubn'.includes(key);
     let timer = null, interval = null;
@@ -191,7 +224,7 @@
     btn.addEventListener('mouseleave', stop);
   });
 
-  // abc: focus the terminal so the phone shows its keyboard,
+  // keyboard: focus the terminal so the phone shows its keyboard,
   // for prompts that need free text or uncommon commands.
   document.getElementById('kbd').addEventListener('click', () => term.focus());
 </script>
