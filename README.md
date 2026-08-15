@@ -688,6 +688,9 @@ Portions based on work by:
 - Nicholas J. Kisseberth (state.c, mdport.c)
 - David Burren (xcrypt.c)
 
+The web interface in `web/` is a new addition to this fork. It is
+released under the same BSD-style terms as the rest of the project.
+
 ---
 
 ## Acknowledgments

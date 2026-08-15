@@ -111,6 +111,9 @@ Notes:
   layout on a desktop browser for testing.
 - `/help` serves the original guide "A Guide to the Dungeons of
   Doom" (generated from rogue.html.in into web/static/help.html).
+- `/scores` shows the shared top ten. It runs `rogue -s` on each
+  request. Entries appear when a player dies, wins or quits with
+  gold; a quit with zero gold is not recorded.
 - Saving works per player id. The id is readable and memorable
   (wren-the-sly-4721), shown in the header, and stored in
   localStorage. Tap the id to see it (write it down) or to type a

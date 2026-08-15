@@ -7,7 +7,10 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"os"
@@ -19,6 +22,17 @@ import (
 	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
 )
+
+const scoresPage = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Rogue Scores</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{background:#0d0d0d;color:#ccc;font-family:monospace;max-width:44rem;
+margin:0 auto;padding:1rem 1.2rem 3rem}a{color:#9c9}pre{color:#cc9;overflow-x:auto}</style>
+</head><body>
+<p><a href="/">&#8592; back to the game</a></p>
+<pre>%s</pre>
+</body></html>
+`
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
@@ -45,6 +59,19 @@ func main() {
 	http.Handle("/", http.FileServer(http.Dir(*staticDir)))
 	http.HandleFunc("/help", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(*staticDir, "help.html"))
+	})
+	http.HandleFunc("/scores", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, bin, "-s")
+		cmd.Dir = filepath.Dir(bin)
+		cmd.Env = append(os.Environ(), "TERM=dumb")
+		out, err := cmd.Output()
+		if err != nil {
+			out = []byte("scores are not available right now")
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprintf(w, scoresPage, html.EscapeString(string(out)))
 	})
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		serveGame(w, r, bin, *saveDir)
