@@ -238,7 +238,9 @@
       ? legacy.toLowerCase().replaceAll(' ', '-')
       : first[Math.floor(Math.random() * first.length)] + '-the-'
         + epithet[Math.floor(Math.random() * epithet.length)];
-    pid = base + '-' + (1000 + Math.floor(Math.random() * 9000));
+    // six digits: the name is public on the scoreboard, so the
+    // number is what keeps other people out of your save
+    pid = base + '-' + (100000 + Math.floor(Math.random() * 900000));
     localStorage.setItem('rogue-id', pid);
   }
 
