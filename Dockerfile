@@ -23,7 +23,9 @@ COPY . .
 
 # The C game. NO_SHELL_ESCAPE disables the `!` shell-escape command, which
 # would otherwise be a shell for every visitor.
-RUN ./configure -q && make CFLAGS="-O2 -DNO_SHELL_ESCAPE"
+# --build is passed explicitly because config.guess cannot detect the build
+# type under the QEMU emulation buildx uses for cross-arch (arm64) builds.
+RUN ./configure -q --build="$(uname -m)-unknown-linux-gnu" && make CFLAGS="-O2 -DNO_SHELL_ESCAPE"
 
 # The Go web bridge (its own module under web/).
 RUN cd web && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /rogue-web .
