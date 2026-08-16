@@ -1,0 +1,48 @@
+# .hydrabuild.yaml — rogue's scale-deploy intent for the git-push-to-deploy
+# pipeline (issue #492).
+#
+# hydragitwatcher reads this file from the root of the tagged commit. On a
+# `v*` tag push it builds the Dockerfile below multi-arch on the federated
+# BuildKit builder, pushes the image to the scale registry, then launches (or
+# `hydraskin update`s) the scale on a node and applies the labels below.
+# A plain branch push builds and pushes the image only — no deploy.
+#
+# This file only DECLARES intent. It changes neither the game nor the image.
+# The existing Dockerfile and .github/workflows/deploy-image.yml remain the
+# source of truth for how the image is built; this is what the watcher reads
+# to know WHERE and HOW to run it once built.
+
+scale:
+  # Scale (Incus instance) name. Also the registry repository name:
+  #   scaleregistry.experiencenet.com/rogue:<tag>
+  name: rogue
+
+  # The domain hydrascalerouter serves, set as user.hydra.domain on the scale.
+  # Covered by the *.experiencenet.com wildcard, so DNS is a verify-only no-op.
+  domain: rogue.experiencenet.com
+
+  # Plain HTTP port inside the container (rogue-web binds :8080). TLS is
+  # terminated upstream by hydrascalerouter. Set as user.hydra.port.
+  port: 8080
+
+  # Health check path, set as user.hydra.health_path. rogue-web has no
+  # /api/v1/health endpoint; it serves /, /help, /scores and /ws. `/` returns
+  # 200 from the static file server, so `/` is the health signal.
+  health_path: /
+
+  # Persistent game state (save files, score and lock files). Attached as an
+  # Incus disk device at launch and mounted at path; never baked into the
+  # image (the Dockerfile deliberately declares no VOLUME).
+  disk:
+    path: /data
+    size: 2GiB
+
+build:
+  # Relative to the repository root (the fetched build context).
+  dockerfile: Dockerfile
+  context: .
+  # Both arches are required: the Pi fleet is arm64 and the hcloud nodes are
+  # amd64. Each is built natively by its own buildkitd daemon — no QEMU.
+  platforms:
+    - linux/amd64
+    - linux/arm64

@@ -1,5 +1,13 @@
 # Runbook: deploy rogue on Hydra (hydraskin)
 
+> **Automated now:** a `v*` tag drives the full git-push-to-deploy path
+> (build + push + launch) via **hydragitwatcher**, reading the root
+> [`.hydrabuild.yaml`](../../.hydrabuild.yaml). See
+> [first-pipeline-test.md](first-pipeline-test.md). That supersedes the
+> "launch is a separate manual step" flow below, which stays as the manual
+> fallback. `.github/workflows/deploy-image.yml` also still publishes the
+> image on a `v*` tag (belt and braces).
+
 This deploys rogue the way HydraMancer's `/deploy` quickstart describes:
 rogue-web is "a container that speaks HTTP", so it runs as a **scale** on a
 hydraskin node with automatic HTTPS on a `*.experiencenet.com` domain. No
