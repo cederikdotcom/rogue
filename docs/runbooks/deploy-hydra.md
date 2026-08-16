@@ -99,3 +99,41 @@ $HC exec $NODE "/usr/bin/incus exec rogue -- ls /data /data/saves" --server "$S"
 ```
 
 To ship a new version: tag it (step 1), then `hydraskin update rogue --tag vX.Y.Z --apply` on the node, or `incus stop rogue && incus rebuild scaleregistry.experiencenet.com/rogue:vX.Y.Z rogue && incus start rogue`.
+
+## Verified deployment (2026-08-16) — first live run
+
+rogue went live at https://rogue.experiencenet.com as a scale on
+pi-node-004 (node-50ab5309), running the pipeline stages by hand. Real
+notes and gotchas from that run:
+
+- **Registry credential**: user `hydra`, token in `/etc/hydrascaleregistry/config.yaml`
+  on the registry host (releasesandscaleregistry, 159.69.93.219). `docker login
+  scaleregistry.experiencenet.com -u hydra`.
+- **Multi-arch build**: `docker buildx build --platform linux/amd64,linux/arm64
+  --push` on an amd64 box with `qemu-user-static` + `tonistiigi/binfmt`. The
+  target Pi is arm64, so arm64 is required. The Dockerfile passes
+  `./configure --build=$(uname -m)-unknown-linux-gnu` because config.guess
+  fails under QEMU emulation.
+- **Launch** (via `hydracluster exec` on the node): the OCI image ref for the
+  node's incus remote is `scaleregistry:rogue:v1.0.0` (not the full URL).
+  `incus create scaleregistry:rogue:v1.0.0 rogue`, then
+  `incus config device add rogue state disk source=/srv/scales/rogue path=/data shift=true`,
+  then labels `user.hydra.domain=rogue.experiencenet.com`,
+  `user.hydra.port=8080`, `user.hydra.health_path=/`, then `incus start rogue`.
+- **DNS is an explicit A record, not a wildcard**. There is no
+  `*.experiencenet.com`; each scale has its own A record to the edge
+  (141.227.136.199). Create it in the `hydraexperiencenet` context:
+  `hcloud zone rrset create --name rogue --type A --record 141.227.136.199 experiencenet.com`.
+- **Create DNS BEFORE the scale is routed**. Traefik requests the cert as soon
+  as the router sees the label; if the A record is not yet globally resolvable,
+  the HTTP-01 challenge fails with NXDOMAIN and Traefik backs off. If that
+  happens, once DNS resolves, force a re-issue with
+  `sudo systemctl restart traefik` on the edge (brief blip for all edge
+  services). Poll the cert with `openssl s_client ... | openssl x509 -issuer`
+  until the issuer is Let's Encrypt.
+- **Verified**: valid cert, `/`, `/help`, `/scores`, and a live game over
+  `wss://rogue.experiencenet.com/ws` all work; game state persists to `/data`.
+
+This was a manual execution of the pipeline stages. The automated
+git-push-to-deploy loop (hydragitwatcher receiving a push and doing all of the
+above) is the remaining work tracked in #492.
