@@ -15,8 +15,8 @@ a belt-and-braces image publish.
 | Piece | Role in this test |
 | --- | --- |
 | **hydramancer** `/deploy` | Creator-facing front door. Signs the creator in (iamnim), proxies the repo request. Holds no credentials. |
-| **hydragitprovision** | Localhost-bound, next to Gitea. Verifies the iamnim session + org membership, then mints the Gitea org/account/repo and adds the creator as a WRITE collaborator. Returns the clone URL and a one-time temp password. |
-| **Gitea** at `git.experiencenet.com` | The git server we control. Fires the push webhook. |
+| **hydragitprovision** | Verifies the iamnim session + org membership, then creates a per-project bare repo and receive hook and returns the git-http push remote (clone URL). Holds no forge admin token; hosts the repos itself on a repo_root disk. |
+| **git-http push remote** at `git.experiencenet.com` | The iamnim-gated per-project receive endpoint hydragitprovision serves. A push fires the post-receive hook that notifies the watcher. |
 | **hydragitwatcher** | Runs as a scale. Receives the push webhook, builds multi-arch on the BuildKit builders, pushes to the registry, drives `hydraskin` to launch/update the scale, sets labels, ensures DNS, reports state. |
 | **BuildKit builder scales** | Two native `buildkitd` daemons — amd64 on an hcloud node, arm64 on a Pi — federated by `buildx` as the `hydra` builder, mesh-exposed on `tcp://<mesh>:1234`. No QEMU. |
 | **This repo** | The workload under test. `Dockerfile` builds the image; `.hydrabuild.yaml` declares where and how to run it. |
@@ -62,8 +62,9 @@ scripts/first-pipeline-test.sh --build    # also dry-run the multi-arch build (n
 
 It checks the `.hydrabuild.yaml` fields, confirms the Dockerfile invariants
 (`:8080`, no `VOLUME`, `HYDRA_AUTO_UPDATE`, `NO_SHELL_ESCAPE`), resolves
-`rogue.experiencenet.com` read-only to confirm the wildcard covers it, and
-prints the exact go/no-go operator steps below. With `--build` it runs
+`rogue.experiencenet.com` read-only to check for the explicit A record (there is
+no wildcard), and prints the exact go/no-go operator steps below. With `--build`
+it runs
 `docker buildx build --platform linux/amd64,linux/arm64` with **no `--push`**
 (output `type=cacheonly`) to prove the image builds multi-arch and the
 watcher's build command string is correct.
@@ -77,11 +78,12 @@ an operator runs them, in order, once the preflight is green.
 
 ### B0. Prerequisites are deployed
 
-- `hydragitprovision` is running (systemd, localhost) next to Gitea, holding
-  the Gitea admin token.
+- `hydragitprovision` is running, reachable over the WireGuard mesh, hosting the
+  per-project bare repos on its repo_root disk and serving iamnim-gated
+  git-http. It holds no forge admin token.
 - The two `buildkitd` builder scales are up and mesh-reachable
   (`tcp://<amd64-mesh>:1234`, `tcp://<arm64-mesh>:1234`).
-- `hydragitwatcher` is deployed as a scale with a watch on `cyborn/rogue`
+- `hydragitwatcher` is deployed as a scale with a watch on `cederik/rogue`
   (`ref: refs/tags/v*`), its `registry.token` set, and its `hydracluster`
   admin token set.
 
@@ -91,22 +93,24 @@ The creator signs in at hydramancer `/deploy` (302 to iamnim `/login`,
 `iamnim_session` cookie set on return), then the git access panel POSTs:
 
 ```json
-{ "kind": "git", "org_slug": "cyborn", "name": "rogue" }
+{ "org_slug": "cederik", "name": "rogue" }
 ```
 
 hydramancer forwards it (with `X-Iamnim-Session`, no credentials) to
-hydragitprovision, which returns once:
+hydragitprovision, which returns:
 
 ```json
 {
-  "endpoint": "https://git.experiencenet.com/cyborn/rogue.git",
-  "login": "<creator-login>",
-  "scope": "write",
-  "temp_password": "<shown once>"
+  "endpoint": "https://git.experiencenet.com/cederik/rogue.git",
+  "scope": "push",
+  "already_existed": false
 }
 ```
 
-Save the `temp_password` now — it is returned only on first creation.
+The `endpoint` is the push remote. There is no account and no temp password;
+all auth is your iamnim session presented to git-http. If `already_existed` is
+true the repo was created on a previous request and the same endpoint is
+returned.
 
 ### B2. Push rogue and tag it
 
@@ -114,7 +118,7 @@ Push this repo's tree (including `Dockerfile`, `.hydrabuild.yaml`, and
 `deploy-image.yml`) to the provisioned repo, then tag a version:
 
 ```sh
-git remote add hydra https://git.experiencenet.com/cyborn/rogue.git
+git remote add hydra https://git.experiencenet.com/cederik/rogue.git
 git push hydra master
 git tag v1.0.0
 git push hydra v1.0.0
@@ -125,23 +129,26 @@ the image only.
 
 ### B3. The watcher takes over
 
-Gitea fires the push webhook to hydragitwatcher `POST /api/v1/hooks/git`
-(HMAC-verified; a `git ls-remote` poll is the fallback if it is missed). The
-watcher then, automatically:
+The per-project post-receive hook fires to hydragitwatcher
+`POST /api/v1/hooks/git` (HMAC-verified over `{org,repo,ref,sha}`; a
+`git ls-remote` poll is the fallback if it is missed). The watcher then,
+automatically:
 
 1. Sees the `v*` tag ref, shallow-fetches the tagged SHA into its sync dir,
    reads `.hydrabuild.yaml`.
 2. `buildx build --builder hydra --platform linux/amd64,linux/arm64 --push -t
    scaleregistry.experiencenet.com/rogue:v1.0.0 -t :latest .` — amd64 built
    natively on the hcloud daemon, arm64 natively on the Pi daemon.
-3. Drives `hydraskin` via the hydracluster exec channel: first launch creates
-   the scale from `scaleregistry:rogue:v1.0.0`, attaches the `/data` disk,
-   sets the labels, exposes `8080`, starts, health-checks. A redeploy is
+3. Ensures DNS FIRST: an explicit A record `rogue.experiencenet.com ->
+   141.227.136.199` (the edge). The record must exist before the scale is
+   routed, or Traefik's first ACME attempt hits NXDOMAIN and backs off.
+4. Drives `hydraskin` via the hydracluster exec channel: first launch creates
+   the scale from `scaleregistry:rogue:v1.0.0`, attaches the `state` disk at
+   `/data`, sets the labels, starts, health-checks. Routing is dynamic from the
+   labels, so there is no static-route step. A redeploy is
    `hydraskin update rogue --tag v1.0.0 --apply`.
-4. Sets `user.hydra.domain=rogue.experiencenet.com`, `user.hydra.port=8080`,
+5. Sets `user.hydra.domain=rogue.experiencenet.com`, `user.hydra.port=8080`,
    `user.hydra.health_path=/`.
-5. Ensures DNS (a no-op verify — the `*.experiencenet.com` wildcard already
-   resolves to the router edge).
 6. Posts build-notify to hydracluster and AgentPush state, then cleans up.
 
 hydrascalerouter discovers the labelled scale (~30s) and serves it.
@@ -174,8 +181,8 @@ curl -s  https://rogue.experiencenet.com/scores      # top ten renders
 # re-pin the previous image (hydraskin caches it)
 hydraskin update rogue --tag <prev-tag> --apply
 
-# tear the test down entirely: delete the scale, then its DNS record if any.
-# The provisioned Gitea repo/account can stay or be removed by an admin.
+# tear the test down entirely: delete the scale, then its A record.
+# The provisioned bare repo can stay or be removed (rm the repo_root path).
 ```
 
 ## Open items carried from the design
@@ -183,10 +190,10 @@ hydraskin update rogue --tag <prev-tag> --apply
 - **First-launch one-shot.** `hydraskin update` reads an existing instance; the
   clean fix is a `hydraskin deploy <scale> --image ... --domain --port
   --health-path --disk` idempotent create-or-update, tracked as a hydraskin PR.
-  Until then the watcher emits the ordered create+attach+label+expose+start
-  sequence.
-- **DNS wildcard.** This runbook assumes `*.experiencenet.com` already resolves
-  to the router edge, making "ensure DNS" a verify-only no-op. Confirm the zone
-  before the first run.
+  Until then the watcher emits the ordered create+attach+label+start sequence
+  (no expose step; routing is label-driven).
+- **DNS is an explicit A record.** There is no `*.experiencenet.com` wildcard.
+  The watcher creates `rogue.experiencenet.com -> 141.227.136.199` before
+  routing the scale. Confirm the zone and the edge IP before the first run.
 - **Registry GC.** Per-push image tags grow unbounded; a retention policy is
   out of scope here and flagged for later.

@@ -18,7 +18,9 @@ scale:
   name: rogue
 
   # The domain hydrascalerouter serves, set as user.hydra.domain on the scale.
-  # Covered by the *.experiencenet.com wildcard, so DNS is a verify-only no-op.
+  # DNS is an explicit A record rogue.experiencenet.com -> 141.227.136.199 (the
+  # edge), created BEFORE the scale is routed so Traefik's first ACME attempt
+  # does not hit NXDOMAIN. There is no *.experiencenet.com wildcard.
   domain: rogue.experiencenet.com
 
   # Plain HTTP port inside the container (rogue-web binds :8080). TLS is
@@ -36,6 +38,26 @@ scale:
   disk:
     path: /data
     size: 2GiB
+
+# Target set: WHERE this one image is deployed. A git push builds a single OCI
+# image; deploy maps that image onto the target set. The default is one scale on
+# one node. A `group` load-balances several members behind one shared domain; a
+# `fanout` runs one member per district, each on its own domain. The schema
+# matches hydragitwatcher's buildconfig Target type (name/node/domain/disk).
+targets:
+  - name: rogue                 # single default; one scale on one node
+    node: node-50ab5309         # arm64 hydraskin node
+    domain: rogue.experiencenet.com
+# group example (load-balanced behind one shared domain):
+#   kind: group
+#   domain: rogue.experiencenet.com
+#   members:
+#     - {name: rogue-a, node: node-50ab5309}
+#     - {name: rogue-b, node: hydraskin-perforce-1}
+# fanout example (per-district, one domain each):
+#   kind: fanout
+#   members:
+#     - {name: rogue-bxl1, node: node-50ab5309, domain: rogue-bxl1.experiencenet.com}
 
 build:
   # Relative to the repository root (the fetched build context).

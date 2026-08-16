@@ -76,13 +76,14 @@ if [ -f "$DF" ]; then
   grep -q '/data' "$DF"                           && ok "state on /data (attached disk device)" || warn "state path /data not referenced"
 fi
 
-hdr "4. DNS is read-only verified (wildcard should cover the host)"
-if command -v getent >/dev/null 2>&1 && getent hosts "$EXP_DOMAIN" >/dev/null 2>&1; then
-  ok "$EXP_DOMAIN resolves (wildcard/live) — ensure-DNS is a no-op"
-elif command -v host >/dev/null 2>&1 && host "$EXP_DOMAIN" >/dev/null 2>&1; then
-  ok "$EXP_DOMAIN resolves (wildcard/live) — ensure-DNS is a no-op"
+hdr "4. DNS is read-only verified (explicit A record -> the edge; no wildcard)"
+EDGE_IP="141.227.136.199"
+if command -v getent >/dev/null 2>&1 && getent hosts "$EXP_DOMAIN" | grep -q "$EDGE_IP"; then
+  ok "$EXP_DOMAIN resolves to $EDGE_IP (A record present)"
+elif command -v host >/dev/null 2>&1 && host "$EXP_DOMAIN" 2>/dev/null | grep -q "$EDGE_IP"; then
+  ok "$EXP_DOMAIN resolves to $EDGE_IP (A record present)"
 else
-  warn "$EXP_DOMAIN did not resolve here; confirm the *.experiencenet.com wildcard before the live run"
+  warn "$EXP_DOMAIN did not resolve to $EDGE_IP here; the watcher must create the A record BEFORE routing (else Traefik ACME hits NXDOMAIN). There is no wildcard."
 fi
 
 if [ "$DO_BUILD" = "1" ]; then
@@ -122,16 +123,18 @@ EOF
 
 hdr "GO / NO-GO — manual operator steps (mutate live infra; run in order)"
 cat <<EOF
-  [ ] B0  hydragitprovision up (systemd, localhost) with the Gitea admin token
+  [ ] B0  hydragitprovision up (mesh-reachable), hosting the bare repos on its
+          repo_root disk and serving iamnim-gated git-http; holds no forge token
   [ ] B0  two buildkitd builder scales up and mesh-reachable (tcp://<mesh>:1234)
-  [ ] B0  hydragitwatcher deployed as a scale, watching cyborn/rogue (ref v*),
+  [ ] B0  hydragitwatcher deployed as a scale, watching cederik/rogue (ref v*),
           with registry.token and its hydracluster admin token set
   [ ] B1  creator signs in at hydramancer /deploy and requests repo:
-            { "kind":"git", "org_slug":"cyborn", "name":"$EXP_NAME" }
-          -> save the one-time temp_password from the response
-  [ ] B2  git push <clone-url> master && git tag v1.0.0 && git push <clone-url> v1.0.0
-  [ ] B3  watcher builds multi-arch, pushes $REGISTRY/$EXP_NAME:v1.0.0,
-          launches/updates the scale, sets labels, verifies DNS
+            { "org_slug":"cederik", "name":"$EXP_NAME" }
+          -> response is { endpoint (push remote), scope:"push", already_existed }
+  [ ] B2  git push <endpoint> master && git tag v1.0.0 && git push <endpoint> v1.0.0
+  [ ] B3  watcher ensures the A record ($EXP_DOMAIN -> 141.227.136.199) FIRST,
+          builds multi-arch, pushes $REGISTRY/$EXP_NAME:v1.0.0,
+          launches/updates the scale, sets labels
   [ ] ACC docker buildx imagetools inspect $REGISTRY/$EXP_NAME:v1.0.0  (amd64 + arm64)
   [ ] ACC curl -sI https://$EXP_DOMAIN/            (200, valid cert)
   [ ] ACC curl -s  https://$EXP_DOMAIN/scores      (top ten renders)
